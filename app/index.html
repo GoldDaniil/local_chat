@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
+  <title>SMS Exchange</title>
+</head>
+<body>
+  <div class="container">
+    <h1>SMS Exchange</h1>
+
+    <textarea id="inputMessage" placeholder="Введите сообщение"></textarea>
+    <button id="sendButton">отправить</button>
+
+    <div id="chatContainer">
+      <div id="receivedMessages"></div>
+      <div id="sentMessages"></div>
+    </div>
+  </div>
+
+  <script>
+    const socket = new WebSocket(`ws://${location.hostname}:3002`);
+
+    let clientId = '';//хранение уникального идентификатора клиента
+
+    socket.onopen = () => {
+      clientId = socket.url.split(":").pop();//client-abc123xyz
+    };
+
+    const inputMessage = document.getElementById('inputMessage');
+    const sendButton = document.getElementById('sendButton');
+    const receivedMessages = document.getElementById('receivedMessages');
+    const sentMessages = document.getElementById('sentMessages');
+    const chatContainer = document.getElementById('chatContainer');
+
+    sendButton.addEventListener('click', () => {//отправка
+      const message = inputMessage.value.trim();
+
+      if (message !== '') {
+        const messageWithId = { message, clientId };
+
+        socket.send(JSON.stringify(messageWithId));//строка
+
+        const sentMessageElement = document.createElement('div');//право
+        sentMessageElement.classList.add('sentMessage');
+        sentMessageElement.innerHTML = `Отправлено: ${message}`;
+        sentMessages.appendChild(sentMessageElement);
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;//низ
+
+        inputMessage.value = '';
+      } else {
+        alert('Введите сообщение');
+      }
+    });
+
+    socket.onmessage = (event) => {
+      let receivedMessage = event.data;
+
+      if (receivedMessage instanceof Blob) {//конвертируем в текст
+        const reader = new FileReader();
+        reader.onload = function() {
+          const receivedMessageElement = document.createElement('div');
+          receivedMessageElement.classList.add('receivedMessage');
+          receivedMessageElement.innerHTML = `Получено: ${reader.result}`;
+          receivedMessages.appendChild(receivedMessageElement);
+
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        };
+        reader.readAsText(receivedMessage);//blob - текст
+      } else {//строка
+        const parsedMessage = JSON.parse(receivedMessage);//парсим строку
+        if (parsedMessage.clientId !== clientId) {
+          //баг - только сообщение - без clientId
+          const receivedMessageElement = document.createElement('div');
+          receivedMessageElement.classList.add('receivedMessage');
+          receivedMessageElement.innerHTML = `Получено: ${parsedMessage.message}`;
+          receivedMessages.appendChild(receivedMessageElement);
+
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+  </script>
+</body>
+</html>
