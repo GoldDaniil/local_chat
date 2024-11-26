@@ -4,18 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
-  <title>local chat</title>
+  <title>SMS Exchange</title>
 </head>
 <body>
   <div class="container">
-    <h1>chat</h1>
+    <h1>SMS Exchange</h1>
 
     <textarea id="inputMessage" placeholder="Введите сообщение"></textarea>
-    <button id="sendButton">отправить</button>
+    <button id="sendButton">Отправить</button>
 
     <div id="chatContainer">
-      <div id="receivedMessages"></div>
-      <div id="sentMessages"></div>
+      <div id="messageList"></div>
     </div>
   </div>
 
@@ -30,22 +29,21 @@
 
     const inputMessage = document.getElementById('inputMessage');
     const sendButton = document.getElementById('sendButton');
-    const receivedMessages = document.getElementById('receivedMessages');
-    const sentMessages = document.getElementById('sentMessages');
+    const messageList = document.getElementById('messageList');
     const chatContainer = document.getElementById('chatContainer');
 
     sendButton.addEventListener('click', () => {//отправка
       const message = inputMessage.value.trim();
 
       if (message !== '') {
-        const messageWithId = { message, clientId };
+        const messageWithId = { message, clientId };//clientId + смс
 
         socket.send(JSON.stringify(messageWithId));//строка
 
         const sentMessageElement = document.createElement('div');//право
         sentMessageElement.classList.add('sentMessage');
         sentMessageElement.innerHTML = `Отправлено: ${message}`;
-        sentMessages.appendChild(sentMessageElement);
+        messageList.appendChild(sentMessageElement);
 
         chatContainer.scrollTop = chatContainer.scrollHeight;//низ
 
@@ -64,7 +62,7 @@
           const receivedMessageElement = document.createElement('div');
           receivedMessageElement.classList.add('receivedMessage');
           receivedMessageElement.innerHTML = `Получено: ${reader.result}`;
-          receivedMessages.appendChild(receivedMessageElement);
+          messageList.appendChild(receivedMessageElement);
 
           chatContainer.scrollTop = chatContainer.scrollHeight;
         };
@@ -76,7 +74,7 @@
           const receivedMessageElement = document.createElement('div');
           receivedMessageElement.classList.add('receivedMessage');
           receivedMessageElement.innerHTML = `Получено: ${parsedMessage.message}`;
-          receivedMessages.appendChild(receivedMessageElement);
+          messageList.appendChild(receivedMessageElement);
 
           chatContainer.scrollTop = chatContainer.scrollHeight;
         }
