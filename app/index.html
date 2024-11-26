@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/style.css">
-  <title>local chat</title>
+  <title>Local Chat</title>
 </head>
 <body>
   <div class="container">
-    <h1>chat</h1>
+    <h1>Chat</h1>
 
     <textarea id="inputMessage" placeholder="Введите сообщение"></textarea>
     <button id="sendButton">Отправить</button>
@@ -21,10 +21,10 @@
   <script>
     const socket = new WebSocket(`ws://${location.hostname}:3002`);
 
-    let clientId = '';//хранение уникального идентификатора клиента
+    let clientId = '';//уникальный идентификатор клиента
 
     socket.onopen = () => {
-      clientId = socket.url.split(":").pop();//client-abc123xyz
+      console.log('WebSocket connection established');
     };
 
     const inputMessage = document.getElementById('inputMessage');
@@ -32,21 +32,19 @@
     const messageList = document.getElementById('messageList');
     const chatContainer = document.getElementById('chatContainer');
 
-    sendButton.addEventListener('click', () => {//отправка
+    sendButton.addEventListener('click', () => {
       const message = inputMessage.value.trim();
 
-      if (message !== '') {
-        const messageWithId = { message, clientId };//clientId + смс
+      if (message !== '') {//сообщение для отправки
+        const messageWithId = { message };//только текст сообщения
+        socket.send(JSON.stringify(messageWithId));
 
-        socket.send(JSON.stringify(messageWithId));//строка
-
-        const sentMessageElement = document.createElement('div');//право
+        const sentMessageElement = document.createElement('div');//отправленное сообщение
         sentMessageElement.classList.add('sentMessage');
         sentMessageElement.innerHTML = `Отправлено: ${message}`;
         messageList.appendChild(sentMessageElement);
 
-        chatContainer.scrollTop = chatContainer.scrollHeight;//низ
-
+        chatContainer.scrollTop = chatContainer.scrollHeight;
         inputMessage.value = '';
       } else {
         alert('Введите сообщение');
@@ -54,30 +52,21 @@
     });
 
     socket.onmessage = (event) => {
-      let receivedMessage = event.data;
+      try {
+        const parsedMessage = JSON.parse(event.data);//парсим сообщение
 
-      if (receivedMessage instanceof Blob) {//конвертируем в текст
-        const reader = new FileReader();
-        reader.onload = function() {
+        if (parsedMessage.clientId && parsedMessage.message) {//не наше смс
           const receivedMessageElement = document.createElement('div');
           receivedMessageElement.classList.add('receivedMessage');
-          receivedMessageElement.innerHTML = `Получено: ${reader.result}`;
+          receivedMessageElement.innerHTML = `Получено от ID ${parsedMessage.clientId}: ${parsedMessage.message}`;
           messageList.appendChild(receivedMessageElement);
 
           chatContainer.scrollTop = chatContainer.scrollHeight;
-        };
-        reader.readAsText(receivedMessage);//blob - текст
-      } else {//строка
-        const parsedMessage = JSON.parse(receivedMessage);//парсим строку
-        if (parsedMessage.clientId !== clientId) {
-          //баг - только сообщение - без clientId
-          const receivedMessageElement = document.createElement('div');
-          receivedMessageElement.classList.add('receivedMessage');
-          receivedMessageElement.innerHTML = `Получено: ${parsedMessage.message}`;
-          messageList.appendChild(receivedMessageElement);
-
-          chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+          console.warn('Получено некорректное сообщение:', event.data);
         }
+      } catch (err) {
+        console.error('Ошибка обработки сообщения:', err, event.data);
       }
     };
 
