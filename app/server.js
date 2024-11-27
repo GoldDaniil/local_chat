@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 const PORT = 3002;
 
-app.use(express.static(path.join(__dirname)));//раздача статических файлов
+app.use(express.static(path.join(__dirname)));
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
@@ -14,15 +14,22 @@ const server = app.listen(PORT, () => {
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
-  ws.clientId = `client-${Math.random().toString(36).substr(2, 9)}`;//уникальный идент = клиент
+  ws.clientId = `client-${Math.random().toString(36).substr(2, 9)}`; 
   console.log(`Client connected with ID: ${ws.clientId}`);
 
   ws.on('message', (message) => {
     console.log(`Received from ${ws.clientId}: ${message}`);
 
-    wss.clients.forEach((client) => {//всем кроме отправителя
+    const parsedMessage = JSON.parse(message);
+
+    const messageWithId = JSON.stringify({
+      message: parsedMessage.message,
+      clientId: ws.clientId,
+    });
+
+    wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN && client !== ws) {
-        client.send(message);//не отправитель
+        client.send(messageWithId);
       }
     });
   });
